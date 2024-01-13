@@ -11,15 +11,17 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public class AppClient {
 
-    public void run(){
+    public void run() throws InterruptedException {
         //定义线程池 eventloopgroup
         NioEventLoopGroup group = new NioEventLoopGroup();
 
         //启动客户端需要辅助类
         Bootstrap bootstrap = new Bootstrap();
+        try {
         bootstrap = bootstrap.group(group)
                 .remoteAddress(new InetSocketAddress(8080))
                 //初始化什么样的channel
@@ -27,24 +29,26 @@ public class AppClient {
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
-
+                        socketChannel.pipeline().addLast(new MyChannelHandler2());
                     }
                 });
 
-        try {
+
             //尝试连接服务器，sync用于阻塞
             ChannelFuture channelFuture = bootstrap.connect().sync();
             //获取channel并且写出数据
-            channelFuture.channel().writeAndFlush(Unpooled.copiedBuffer("hello".getBytes(Charset.forName("UTF-8"))));
+            channelFuture.channel().writeAndFlush(Unpooled.copiedBuffer("hello".getBytes(StandardCharsets.UTF_8)));
             //阻塞等待接收消息
             channelFuture.channel().closeFuture().sync();
         } catch(InterruptedException e){
-            throw new RuntimeException(e);
+            e.printStackTrace();
+        } finally {
+            group.shutdownGracefully().sync();
         }
 
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         new AppClient().run();
     }
 
